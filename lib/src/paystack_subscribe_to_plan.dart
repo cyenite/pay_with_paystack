@@ -6,38 +6,22 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:webview_flutter/webview_flutter.dart';
 
-/// Make Paystack payments instantly provided you have you Paystack
-/// secret [secretKey], [reference], [currency], [email], [email], [paymentChannel] and [amount].
-class PaystackPayNow extends StatefulWidget {
+/// Subscribe to a plan with Paystack provided you have you Paystack:
+/// secret [secretKey], [email], [planId] and [amount].
+class PaystackSubscribeToPlan extends StatefulWidget {
   /// Secret Key is provided by Paystack when an account is created with PayStack.
   final String secretKey;
-
-  /// Reference could be alpha numeric and or numeric sequencial character,
-  /// could be a way to check trasancation from the backend.
-  final String reference;
-
-  /// Callback URL from Paystack
-  final String callbackUrl;
-
-  /// Currency as at the time of publishing was either GHS or NGN
-  /// PayStack is currently expanding in Africa so try using other currencies.
-  final String currency;
 
   /// Email of the customer trying to make payment.
   final String email;
 
+  /// This is the plan ID from Paystack Dashboard.
+  /// It is a unique identifier for the plan.
+  final String planId;
+
   /// This is the amount as a rounded figure.
   /// Do not include the currency symbol, or decimal places.
   final String amount;
-
-  /// MetaData helps with DevOps for sending custom
-  /// fields to be consumed at the backend of frontend.
-  final Object? metadata;
-
-  /// Payment Channels are the types of payment methods
-  /// you want to present to the user based on what Paystack
-  /// provides with your secretkey.
-  final Object? paymentChannel;
 
   /// If transacted was completed successfully.
   final Function? transactionCompleted;
@@ -48,26 +32,22 @@ class PaystackPayNow extends StatefulWidget {
   ///for sending user back
   final BuildContext? context;
 
-  const PaystackPayNow(
+  const PaystackSubscribeToPlan(
       {Key? key,
       required this.secretKey,
       required this.email,
-      required this.reference,
-      required this.currency,
       required this.amount,
-      required this.callbackUrl,
+      required this.planId,
       required this.transactionCompleted,
       required this.transactionNotCompleted,
-      this.metadata,
-      this.paymentChannel,
       this.context})
       : super(key: key);
 
   @override
-  State<PaystackPayNow> createState() => _PaystackPayNowState();
+  State<PaystackSubscribeToPlan> createState() => _PaystackPayNowState();
 }
 
-class _PaystackPayNowState extends State<PaystackPayNow> {
+class _PaystackPayNowState extends State<PaystackSubscribeToPlan> {
   /// Adds two extra zeroes to the amount to denote decimal places.
   /// Example: 1000 => 100000 which is 1000.00
   String _addTwoExtraZeroes(String amount) {
@@ -91,10 +71,7 @@ class _PaystackPayNowState extends State<PaystackPayNow> {
         body: jsonEncode({
           "email": widget.email,
           "amount": _addTwoExtraZeroes(widget.amount),
-          "reference": widget.reference,
-          "currency": widget.currency,
-          "metadata": widget.metadata,
-          "channels": widget.paymentChannel
+          "plan": widget.amount,
         }),
       );
     } on Exception catch (e) {
@@ -181,18 +158,6 @@ class _PaystackPayNowState extends State<PaystackPayNow> {
                           if (value == true) {
                             widget.transactionCompleted?.call();
                             Navigator.of(context).pop(); //close webview
-                          } else {
-                            widget.transactionNotCompleted?.call();
-                            Navigator.of(widget.context!).pop(); //close webview
-                          }
-                        });
-                      } else if (request.url.contains(widget.callbackUrl)) {
-                        await _checkTransactionStatusSuccessful(
-                                snapshot.data!.reference)
-                            .then((value) {
-                          if (value == true) {
-                            widget.transactionCompleted?.call();
-                            Navigator.of(widget.context!).pop(); //close webview
                           } else {
                             widget.transactionNotCompleted?.call();
                             Navigator.of(widget.context!).pop(); //close webview
