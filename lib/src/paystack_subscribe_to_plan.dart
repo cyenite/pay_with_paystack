@@ -71,7 +71,7 @@ class _PaystackPayNowState extends State<PaystackSubscribeToPlan> {
         body: jsonEncode({
           "email": widget.email,
           "amount": _addTwoExtraZeroes(widget.amount),
-          "plan": widget.amount,
+          "plan": widget.planId,
         }),
       );
     } on Exception catch (e) {
