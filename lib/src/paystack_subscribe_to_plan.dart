@@ -176,14 +176,23 @@ class _PaystackPayNowState extends State<PaystackSubscribeToPlan> {
           ),
         )
         ..loadRequest(Uri.parse(snapshot.authUrl));
+      setState(() {
+        loading = false;
+      });
     });
   }
+
+  bool loading = true;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: WebViewWidget(controller: webViewController),
+        child: loading
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
+            : WebViewWidget(controller: webViewController),
         // child: FutureBuilder<PaystackRequestResponse>(
         //   future: _makePaymentRequest(),
         //   builder: (context, AsyncSnapshot<PaystackRequestResponse> snapshot) {
