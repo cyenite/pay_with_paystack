@@ -76,8 +76,7 @@ class _PaystackPayNowState extends State<PaystackSubscribeToPlan> {
       );
     } on Exception catch (e) {
       /// In the event of an exception, take the user back and show a SnackBar error.
-      throw Exception(
-          "Response Code: ${response.statusCode}, Response Body${e.toString()}");
+      throw Exception(e.toString());
     }
 
     if (response.statusCode == 200) {
@@ -86,8 +85,7 @@ class _PaystackPayNowState extends State<PaystackSubscribeToPlan> {
       return PaystackRequestResponse.fromJson(jsonDecode(response.body));
     } else {
       /// Anything else means there is an issue.
-      throw Exception(
-          "Response Code: ${response.statusCode}, Response Body${response.body}");
+      throw Exception("${response.body}");
     }
   }
 
@@ -124,80 +122,106 @@ class _PaystackPayNowState extends State<PaystackSubscribeToPlan> {
     }
   }
 
+  late WebViewController webViewController;
+
+  @override
+  void initState() {
+    super.initState();
+    _makePaymentRequest().then((snapshot) {
+      try {
+        webViewController = WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..setUserAgent("Flutter;Webview")
+          ..setNavigationDelegate(
+            NavigationDelegate(
+              onNavigationRequest: (request) async {
+                if (request.url.contains('cancelurl.com')) {
+                  await _checkTransactionStatusSuccessful(snapshot.reference)
+                      .then((value) {
+                    if (value == true) {
+                      widget.transactionCompleted?.call();
+                      Navigator.of(widget.context!).pop(); //close webview
+                    } else {
+                      widget.transactionNotCompleted?.call();
+                      Navigator.of(widget.context!).pop(); //close webview
+                    }
+                  });
+                } else if (request.url.contains('paystack.co/close')) {
+                  await _checkTransactionStatusSuccessful(snapshot.reference)
+                      .then((value) {
+                    if (value == true) {
+                      widget.transactionCompleted?.call();
+                      Navigator.of(context).pop(); //close webview
+                    } else {
+                      widget.transactionNotCompleted?.call();
+                      Navigator.of(widget.context!).pop(); //close webview
+                    }
+                  });
+                }
+                if (request.url == "https://hello.pstk.xyz/callback") {
+                  await _checkTransactionStatusSuccessful(snapshot.reference)
+                      .then((value) {
+                    if (value == true) {
+                      widget.transactionCompleted?.call();
+                      Navigator.of(widget.context!).pop(); //close webview
+                    } else {
+                      widget.transactionNotCompleted?.call();
+                      Navigator.of(widget.context!).pop(); //close webview
+                    }
+                  });
+                }
+                return NavigationDecision.navigate;
+              },
+            ),
+          )
+          ..loadRequest(Uri.parse(snapshot.authUrl));
+      } catch (e) {
+        setState(() {
+          loading = false;
+          error = e as String;
+        });
+      }
+      setState(() {
+        loading = false;
+      });
+    });
+  }
+
+  bool loading = true;
+  String? error;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: FutureBuilder<PaystackRequestResponse>(
-          future: _makePaymentRequest(),
-          builder: (context, AsyncSnapshot<PaystackRequestResponse> snapshot) {
-            /// Show screen if snapshot has data and status is true.
-            if (snapshot.hasData && snapshot.data!.status == true) {
-              final controller = WebViewController()
-                ..setJavaScriptMode(JavaScriptMode.unrestricted)
-                ..setUserAgent("Flutter;Webview")
-                ..setNavigationDelegate(
-                  NavigationDelegate(
-                    onNavigationRequest: (request) async {
-                      if (request.url.contains('cancelurl.com')) {
-                        await _checkTransactionStatusSuccessful(
-                                snapshot.data!.reference)
-                            .then((value) {
-                          if (value == true) {
-                            widget.transactionCompleted?.call();
-                            Navigator.of(widget.context!).pop(); //close webview
-                          } else {
-                            widget.transactionNotCompleted?.call();
-                            Navigator.of(widget.context!).pop(); //close webview
-                          }
-                        });
-                      } else if (request.url.contains('paystack.co/close')) {
-                        await _checkTransactionStatusSuccessful(
-                                snapshot.data!.reference)
-                            .then((value) {
-                          if (value == true) {
-                            widget.transactionCompleted?.call();
-                            Navigator.of(context).pop(); //close webview
-                          } else {
-                            widget.transactionNotCompleted?.call();
-                            Navigator.of(widget.context!).pop(); //close webview
-                          }
-                        });
-                      }
-                      if (request.url == "https://hello.pstk.xyz/callback") {
-                        await _checkTransactionStatusSuccessful(
-                                snapshot.data!.reference)
-                            .then((value) {
-                          if (value == true) {
-                            widget.transactionCompleted?.call();
-                            Navigator.of(widget.context!).pop(); //close webview
-                          } else {
-                            widget.transactionNotCompleted?.call();
-                            Navigator.of(widget.context!).pop(); //close webview
-                          }
-                        });
-                      }
-                      return NavigationDecision.navigate;
-                    },
-                  ),
-                )
-                ..loadRequest(Uri.parse(snapshot.data!.authUrl));
-              return WebViewWidget(
-                controller: controller,
-              );
-            }
+        child: loading
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
+            : error != null
+                ? Center(
+                    child: Text(error!),
+                  )
+                : WebViewWidget(controller: webViewController),
+        // child: FutureBuilder<PaystackRequestResponse>(
+        //   future: _makePaymentRequest(),
+        //   builder: (context, AsyncSnapshot<PaystackRequestResponse> snapshot) {
+        //     /// Show screen if snapshot has data and status is true.
+        //     if (snapshot.data!.status == true) {
+        //       return WebViewWidget(
+        //         controller: webViewController,
+        //       );
+        //     }
 
-            if (snapshot.hasError) {
-              return Center(
-                child: Text('${snapshot.error}'),
-              );
-            }
-
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          },
-        ),
+        //     if (snapshot.hasError) {
+        //       return Center(
+        //         child: Text('${snapshot.error}'),
+        //       );
+        //     }
+        //     return const Center(
+        //       child: CircularProgressIndicator(),
+        //     );
+        //   },
+        // ),
       ),
     );
   }
