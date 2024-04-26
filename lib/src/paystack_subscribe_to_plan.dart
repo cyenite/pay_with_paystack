@@ -177,6 +177,7 @@ class _PaystackPayNowState extends State<PaystackSubscribeToPlan> {
           ..loadRequest(Uri.parse(snapshot.authUrl));
       } catch (e) {
         setState(() {
+          loading = false;
           error = e as String;
         });
       }
